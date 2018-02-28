@@ -16,8 +16,7 @@
 bool   cannon_keyboard_input = true;
 bool   drag_pan = false, old_cki;
 double drag_oldx = -1, drag_oldy = -1;
-int mode=0;
-
+bool lbutton_down = false;
 using namespace std;
 
 /* Executed when a regular key is pressed/released/held-down */
@@ -60,8 +59,8 @@ void keyboardChar(GLFWwindow *window, unsigned int key) {
     case 'C':
     case 'c':
         //quit(window);
-        change_camera(mode%2);
-        mode++;
+        change_camera();
+        //mode++;
         break;
     default:
         break;
@@ -69,26 +68,28 @@ void keyboardChar(GLFWwindow *window, unsigned int key) {
 }
 
 /* Executed when a mouse button is pressed/released */
-void mouseButton(GLFWwindow *window, int button, int action, int mods) {
-    switch (button) {
-    case GLFW_MOUSE_BUTTON_LEFT:
-        if (action == GLFW_PRESS) {
-            // Do something
-            return;
-        } else if (action == GLFW_RELEASE) {
-            // Do something
+void mouseButton(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if(GLFW_PRESS == action){
+            lbutton_down = true;
         }
-        break;
-    // case GLFW_MOUSE_BUTTON_RIGHT:
-    // if (action == GLFW_RELEASE) {
-    // rectangle_rot_dir *= -1;
-    // }
-    // break;
-    default:
-        break;
+        else if(GLFW_RELEASE == action){
+            lbutton_down = false;
+        }
     }
+
+}
+
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    //printf("xpos=%f ypos=%f\n",xpos, ypos);
+    heli_camera(xpos, ypos);
 }
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-    // Do something
+    if(yoffset<0)
+        zoom_camera(1);
+    if(yoffset>0)
+        zoom_camera(-1);
 }

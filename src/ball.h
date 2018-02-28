@@ -10,10 +10,16 @@ public:
     Ball(float x, float y, float z, color_t color);
     glm::vec3 position;
     float rotation;
+    void right();
+    void left();
+    void forward(float angle);
+    void jump();
     void draw(glm::mat4 VP);
     void set_position(float x, float y, float z);
     void tick();
-    double speed;
+    float speed;
+    float speedy;
+    float gravity;
 private:
     VAO *object;
     VAO *object1;

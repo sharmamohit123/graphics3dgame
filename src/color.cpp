@@ -17,4 +17,5 @@ const color_t COLOR_BALL6 = { 255, 128, 0};
 const color_t COLOR_BALL7 = { 0, 134, 179 };
 const color_t COLOR_BALL8 = { 255, 0, 0 };
 const color_t COLOR_MAGNET = { 230, 0, 0};
+const color_t COLOR_WAVE = { 0, 0, 204};
 
