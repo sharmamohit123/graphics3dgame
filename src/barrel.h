@@ -1,14 +1,15 @@
 #include "main.h"
 
-#ifndef Rock_H
-#define Rock_H
+#ifndef Barrel_H
+#define Barrel_H
 
 
-class Rock {
+class Barrel {
 public:
-    Rock() {}
-    Rock(float x, float y, float z, float size, color_t color);
+    Barrel() {}
+    Barrel(float x, float y, float z, float size, color_t color);
     glm::vec3 position;
+    int ngift;
     float size;
     float rotation;
     void draw(glm::mat4 VP);
@@ -19,4 +20,4 @@ private:
     VAO *object;
 };
 
-#endif // Rock_H
+#endif // Barrel_H

@@ -2,8 +2,10 @@
 #include "timer.h"
 #include "ball.h"
 #include "water.h"
-#include "rock.h"
+#include "barrel.h"
 #include "waves.h"
+#include "canon.h"
+#include "gifts.h"
 using namespace std;
 
 GLMatrices Matrices;
@@ -16,12 +18,14 @@ GLFWwindow *window;
 
 Ball boat;
 Water sea;
-Rock rock[10];
+Barrel barrel[100];
 Waves wave[100];
+Canon canon;
+Gifts gift[30];
 
 float screen_zoom = 1, screen_center_x = 0, screen_center_y = 0;
 float camera_rotation_angle = 0, camera_x=0, camera_y=90, camera_z=100, target_x=0, target_y=90, target_z=0;
-int view = 1, i, ran_x, ran_z, n=100;
+int view = 1, i, ran_x, ran_z, n=100, m=50, g=20;
 const float pi = 3.14159;
 
 Timer t60(1.0 / 60);
@@ -61,16 +65,23 @@ void draw() {
     // Scene render
     sea.draw(VP);
     boat.draw(VP);
-    rock[0].draw(VP);
     for(i=0;i<n;i++)
         wave[i].draw(VP);
+    for(i=0;i<m;i++)
+        barrel[i].draw(VP);
+    for(i=0;i<g;i++)
+        gift[i].draw(VP);
+    if(canon.release)
+        canon.draw(VP);
 }
 
 void tick_input(GLFWwindow *window) {
     int left  = glfwGetKey(window, GLFW_KEY_LEFT);
     int right = glfwGetKey(window, GLFW_KEY_RIGHT);
     int up = glfwGetKey(window, GLFW_KEY_UP);
+    int down = glfwGetKey(window, GLFW_KEY_DOWN);
     int jump = glfwGetKey(window, GLFW_KEY_SPACE);
+    int fire = glfwGetKey(window, GLFW_KEY_F);
     if (left) {
         boat.left();
         //speed_camera(2);
@@ -83,18 +94,33 @@ void tick_input(GLFWwindow *window) {
         boat.forward((boat.rotation-90)*(pi/180));
         //speed_camera(1);
     }
+    if(down){
+        boat.backward((boat.rotation-90)*(pi/180));
+    }
     if(jump){
         if(boat.position.y<=62)
             boat.jump();
+    }
+    if(fire && !canon.release){
+        //audio_init("assets/song1.mp3");
+        //audio_play();
+        canon.release = 1;
+        canon.fire((boat.rotation-90)*(pi/180));
     }
 }
 
 void tick_elements() {
     boat.tick();
-    //camera_rotation_angle += 1;
-    //printf("camera_x=%f\n", camera_x);
-    //printf("camera_y=%f\n", camera_y);
-    //printf("camera_z=%f\n", camera_z);
+    for(i=0;i<g;i++)
+        gift[i].tick();
+    boat.shm();
+    printf("%.2f\n",boat.position.y);
+    if(!canon.release){
+       canon.set_position(boat.position.x, boat.position.y, boat.position.z);
+    }
+    else{
+        canon.tick();
+    }
 }
 
 /* Initialize the OpenGL rendering properties */
@@ -103,17 +129,35 @@ void initGL(GLFWwindow *window, int width, int height) {
     /* Objects should be created before any other gl function and shaders */
     // Create the models
 
-    boat = Ball(0, 62, 20, COLOR_RED);
+    boat = Ball(0, 60, 40, COLOR_RED);
     sea  =  Water(0, 40, 0, COLOR_BLUE);
-    rock[0] = Rock(10, 70, -100, 3, COLOR_RED);
     boat.rotation = 90;
     printf("max=%d\n", INT_MAX);
     for(i=0;i<n;i++){
         ran_x = rand() % 2000-1000;
-        //ran_y = (rand() % 90000 + 1 - 25000)*0.0001;
-        ran_z = rand() % 2000-1000;
-        //ran_c =rand() % 7;
+        ran_z = rand() % 3000-4000;
         wave[i] = Waves(ran_x, 60 , ran_z, COLOR_WAVE);
+    }
+    for(i=0;i<m;i++){
+        ran_x = rand() % 10000-5000;
+        if(ran_x>-500 && ran_x<0)
+            ran_x-=500;
+        if(ran_x<500 && ran_x>0)
+            ran_x+=500;
+        ran_z = rand() % 10000-5000;
+        if(ran_z>-560 && ran_z<60)
+            ran_z-=500;
+        if(ran_x<560 && ran_x>60)
+            ran_x+=500;
+        barrel[i] = Barrel(ran_x, 60 , ran_z, 6, COLOR_BROWN);
+    }
+    canon = Canon(0, 62, 40, COLOR_DARK_BLUE);
+
+    for(i=0;i<g;i++){
+        int g_barrel = rand()%m;
+        while(barrel[g_barrel].ngift!=-1)
+            g_barrel = rand()%m;
+        gift[i] = Gifts(barrel[g_barrel].position.x+20, barrel[g_barrel].position.y+40, barrel[g_barrel].position.z, COLOR_BALL5);
     }
     // Create and compile our GLSL program from the shaders
     programID = LoadShaders("Sample_GL.vert", "Sample_GL.frag");
@@ -146,8 +190,10 @@ int main(int argc, char **argv) {
 
     initGL (window, width, height);
 
+    //audio_init("assets/song.mp3");
     /* Draw in loop */
     while (!glfwWindowShouldClose(window)) {
+         //audio_play();
         // Process timers
 
         if (t60.processTick()) {
@@ -170,17 +216,18 @@ int main(int argc, char **argv) {
 }
 
 bool detect_collision(bounding_box_t a, bounding_box_t b) {
-    return (abs(a.x - b.x) * 2 < (a.width + b.width)) &&
+    return (abs(a.x - b.x) * 2 < (a.length + b.length)) &&
+            (abs(a.z - b.z) * 2 < (a.width + b.width)) &&
            (abs(a.y - b.y) * 2 < (a.height + b.height));
 }
 
 void reset_screen() {
-    /*float top    = screen_center_y + 10 / screen_zoom;
-    float bottom = screen_center_y - 10 / screen_zoom;
-    float left   = screen_center_x - 10 / screen_zoom;
-    float right  = screen_center_x + 10 / screen_zoom;
+    /*float top    = screen_center_y + 50 / screen_zoom;
+    float bottom = screen_center_y - 50 / screen_zoom;
+    float left   = screen_center_x - 50 / screen_zoom;
+    float right  = screen_center_x + 50 / screen_zoom;
     Matrices.projection = glm::ortho(left, right, bottom, top, 0.1f, 500.0f);*/
-    Matrices.projection = glm::perspective(45.0f, 1.0f, 50.0f, 500.0f);
+    Matrices.projection = glm::perspective(45.0f, 1.0f, 50.0f, 10000.0f);
 }
 
 void change_camera(){
@@ -209,14 +256,6 @@ void change_camera(){
 void speed_camera(){
     float theta = (boat.rotation-90)*(pi/180);
     if(view==1){
-        /*if(key==1){
-            camera_z -= boat.speed*cos((boat.rotation-90)*(pi/180));
-            camera_x -= boat.speed*sin((boat.rotation-90)*(pi/180));
-        }
-        else if(key==2 || key==3){
-            camera_x = 20*sin(theta)*sin(theta);
-            camera_z = 20*sin(theta)*cos(theta);
-        }*/
         camera_x = boat.position.x+80*sin(theta);
         camera_y = 90;
         camera_z = boat.position.z+80*cos(theta);
@@ -226,9 +265,9 @@ void speed_camera(){
         target_z = boat.position.z+cos(theta+pi);
     }
     else if(view==0){
-        camera_x = boat.position.x;
+        camera_x = boat.position.x+30*sin(theta);
         camera_y = boat.position.y+10;
-        camera_z = boat.position.z+30;
+        camera_z = boat.position.z+30*cos(theta);
 
         target_x = boat.position.x+40*sin(theta+pi);
         target_y = boat.position.y+10;
@@ -248,7 +287,7 @@ void speed_camera(){
         printf("tx=%f ty=%f tz=%f\n", target_x, target_y, target_z);
     }
     else if(view==4){
-        camera_x = 100;
+        camera_x = boat.position.x+100;
         camera_y = 100;
         camera_z = boat.position.z;
 
@@ -264,9 +303,9 @@ void speed_camera(){
 
 void heli_camera(float x, float y){
     if(view==2){
-        target_x = (x-300)/3;
-        if(y<=200){
-            target_y = (300-y)/3;
+        target_x = boat.position.x+(x-300);
+        if(y<=300){
+            target_y = boat.position.y+(300-y)/2;
         }
     }
 }

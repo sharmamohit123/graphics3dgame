@@ -9,12 +9,12 @@ Water::Water(float x, float y, float z, color_t color) {
     // Our vertices. Three consecutive floats give a 3D vertex; Three consecutive vertices give a triangle.
     // A cube has 6 faces with 2 triangles each, so this makes 6*2=12 triangles, and 12*3 vertices
     /*static const GLfloat vertex_buffer_data[] = {
-        -100.0f,-20.0f,-100.0f, // triangle 1 : begin
-        -100.0f,-20.0f, 100.0f,
-        -100.0f, 20.0f, 100.0f, // triangle 1 : end
-         100.0f, 20.0f,-100.0f, // triangle 2 : begin
         -100.0f,-20.0f,-100.0f,
-        -100.0f, 20.0f,-100.0f, // triangle 2 : end
+        -100.0f,-20.0f, 100.0f,
+        -100.0f, 20.0f, 100.0f,
+         100.0f, 20.0f,-100.0f,
+        -100.0f,-20.0f,-100.0f,
+        -100.0f, 20.0f,-100.0f,
          100.0f,-20.0f, 100.0f,
         -100.0f,-20.0f,-100.0f,
          100.0f,-20.0f,-100.0f,

@@ -68,8 +68,10 @@ enum direction_t { DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT };
 struct bounding_box_t {
     float x;
     float y;
+    float z;
     float width;
     float height;
+    float length;
 };
 
 bool detect_collision(bounding_box_t a, bounding_box_t b);
@@ -81,13 +83,17 @@ void zoom_camera(int type);
 extern float screen_zoom, screen_center_x, screen_center_y;
 void reset_screen();
 
+// Audio
+void audio_init(const char *string);
+void audio_play();
+void audio_close();
+
 // ---- Colors ----
 extern const color_t COLOR_RED;
-extern const color_t COLOR_DARK_RED;
+extern const color_t COLOR_DARK_BLUE;
 extern const color_t COLOR_YELLOW;
 extern const color_t COLOR_GREEN;
 extern const color_t COLOR_BLACK;
-extern const color_t COLOR_BROWN;
 extern const color_t COLOR_BLUE;
 extern const color_t COLOR_BACKGROUND;
 extern const color_t COLOR_BALL1;
@@ -100,5 +106,6 @@ extern const color_t COLOR_BALL7;
 extern const color_t COLOR_BALL8;
 extern const color_t COLOR_MAGNET;
 extern const color_t COLOR_WAVE;
+extern const color_t COLOR_BROWN;
 
 #endif

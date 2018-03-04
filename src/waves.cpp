@@ -38,8 +38,8 @@ void Waves::set_position(float x, float y, float z) {
 }*/
 
 bounding_box_t Waves::bounding_box() {
-    float x = this->position.x, y = this->position.y;
+    float x = this->position.x, y = this->position.y, z = this->position.z;
     //float w = this->radius, h = this->radius;
-    bounding_box_t bbox = { x, y, 16, 2 };
+    bounding_box_t bbox = { x, y, z, 4, 4, 4 };
     return bbox;
 }

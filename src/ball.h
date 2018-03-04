@@ -11,8 +11,14 @@ public:
     glm::vec3 position;
     float rotation;
     void right();
+    float level_angle;
+    float angular_speed;
+    float acceleration_y;
+    float speed_y;
+    void shm();
     void left();
     void forward(float angle);
+    void backward(float angle);
     void jump();
     void draw(glm::mat4 VP);
     void set_position(float x, float y, float z);
