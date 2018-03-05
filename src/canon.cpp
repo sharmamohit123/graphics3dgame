@@ -71,7 +71,7 @@ void Canon::tick() {
      this->position.z -= speedx*cos(angle);
     speedy += gravity;
     this->position.y += speedy;
-    if(this->position.y<60){
+    if(this->position.y<55){
         //this->position.y = 62;
         speedy = 0;
         gravity = 0;
@@ -80,16 +80,17 @@ void Canon::tick() {
     }
 }
 
-void Canon::fire(float theta){
-    speedx = 10;
-    speedy = 10;
+void Canon::fire(float theta, float alpha){
+    float pi = 3.145;
+    speedx = 10*cos(alpha*pi/180);
+    speedy = 10*sin(alpha*pi/180);
     gravity = -0.5;
-    angle = theta;
+    angle = theta*pi/180;
 }
 
 bounding_box_t Canon::bounding_box() {
     float x = this->position.x, y = this->position.y, z = this->position.z;
     //float w = this->radius, h = this->radius;
-    bounding_box_t bbox = { x, y, z, 4, 4, 4 };
+    bounding_box_t bbox = { x, y, z, 8, 8, 8 };
     return bbox;
 }

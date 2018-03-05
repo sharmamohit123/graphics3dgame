@@ -4,6 +4,7 @@
 Gifts::Gifts(float x, float y, float z, color_t color) {
     this->position = glm::vec3(x, y, z);
     this->rotation = 0;
+    nbarrel = -1;
     int pos=0,i,k,n=6;
             //Any polygon can be created by changing of n
     GLfloat g_vertex_buffer_data[9*n];
@@ -45,6 +46,6 @@ void Gifts::tick() {
 bounding_box_t Gifts::bounding_box() {
     float x = this->position.x, y = this->position.y, z = this->position.z;
     //float w = this->radius, h = this->radius;
-    bounding_box_t bbox = { x, y, z, 0.1, 8, 7 };
+    bounding_box_t bbox = { x, y, z, 16, 16, 16 };
     return bbox;
 }

@@ -73,6 +73,7 @@ void mouseButton(GLFWwindow* window, int button, int action, int mods)
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if(GLFW_PRESS == action){
             lbutton_down = true;
+            canon_fire();
         }
         else if(GLFW_RELEASE == action){
             lbutton_down = false;
@@ -85,6 +86,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
     //printf("xpos=%f ypos=%f\n",xpos, ypos);
     heli_camera(xpos, ypos);
+    aim_canon(xpos, ypos);
 }
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {

@@ -14,7 +14,7 @@ public:
     void draw(glm::mat4 VP);
     void set_position(float x, float y, float z);
     void tick();
-    void fire(float angle);
+    void fire(float angle, float alpha);
     float angle;
     float speedx;
     float speedy;

@@ -48,23 +48,23 @@ Water::Water(float x, float y, float z, color_t color) {
     };*/
     int pos=0,i,k,n=100;
     float j;
-            //Any polygon can be created by changing of n
-            GLfloat g_vertex_buffer_data[180*n];
-            float pi = 3.14159, angle = 0, theta=(2*pi)/n;
-            for(j=0;j<2;j+=0.1){
-                for(i=0;i<n;i++){
-                    g_vertex_buffer_data[pos++]= 0.0f;
-                    g_vertex_buffer_data[pos++]= 10*j;
-                    g_vertex_buffer_data[pos++]= 0.0f;
-                    for(k=0;k<2;k++){
-                        g_vertex_buffer_data[pos++]= INT_MAX*cos(angle);
-                        g_vertex_buffer_data[pos++]= 10*j;
-                        g_vertex_buffer_data[pos++]= INT_MAX*sin(angle);
-                        angle += theta;
-                    }
-                    angle-=theta;
-                }
+    //Any polygon can be created by changing of n
+    GLfloat g_vertex_buffer_data[180*n];
+    float pi = 3.14159, angle = 0, theta=(2*pi)/n;
+    for(j=0;j<2;j+=0.1){
+        for(i=0;i<n;i++){
+            g_vertex_buffer_data[pos++]= 0.0f;
+            g_vertex_buffer_data[pos++]= 10*j;
+            g_vertex_buffer_data[pos++]= 0.0f;
+            for(k=0;k<2;k++){
+                g_vertex_buffer_data[pos++]= INT_MAX*cos(angle);
+                g_vertex_buffer_data[pos++]= 10*j;
+                g_vertex_buffer_data[pos++]= INT_MAX*sin(angle);
+                angle += theta;
             }
+            angle-=theta;
+        }
+    }
 
     /*this->object = create3DObject(GL_TRIANGLES, 6, vertex_buffer_data, color, GL_FILL);
     this->object1 = create3DObject(GL_TRIANGLES, 6, vertex_buffer_data+18, COLOR_BALL2, GL_FILL);

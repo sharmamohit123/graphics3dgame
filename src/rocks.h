@@ -1,24 +1,23 @@
 #include "main.h"
 
-#ifndef Gifts_H
-#define Gifts_H
+#ifndef Rocks_H
+#define Rocks_H
 
 
-class Gifts {
+class Rocks {
 public:
-    Gifts() {}
-    Gifts(float x, float y, float z, color_t color);
+    Rocks() {}
+    Rocks(float x, float y, float z, color_t color);
     glm::vec3 position;
     //float radius;
     float rotation;
     void draw(glm::mat4 VP);
     void set_position(float x, float y, float z);
-    void tick();
-    int nbarrel;
+    //void tick();
     //double speed;
     bounding_box_t bounding_box();
 private:
     VAO *object;
 };
 
-#endif // Gifts_H
+#endif // Rocks_H

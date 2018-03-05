@@ -78,7 +78,11 @@ bool detect_collision(bounding_box_t a, bounding_box_t b);
 void change_camera();
 void speed_camera();
 void heli_camera(float x, float y);
+void aim_canon(float x, float y);
 void zoom_camera(int type);
+void show_explosion();
+void canon_fire();
+void check_collision(int move);
 
 extern float screen_zoom, screen_center_x, screen_center_y;
 void reset_screen();
@@ -107,5 +111,9 @@ extern const color_t COLOR_BALL8;
 extern const color_t COLOR_MAGNET;
 extern const color_t COLOR_WAVE;
 extern const color_t COLOR_BROWN;
+extern const color_t COLOR_GREY;
+extern const color_t COLOR_DARK_RED;
+extern const color_t COLOR_WHITE;
+extern const color_t COLOR_BOTTOM;
 
 #endif

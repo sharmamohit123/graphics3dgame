@@ -5,6 +5,8 @@ Ball::Ball(float x, float y, float z, color_t color) {
     this->position = glm::vec3(x, y, z);
     this->rotation = 0;
     speed = 5;
+    health = 100;
+    points = 0;
     this->angular_speed = 0.25;
     speedy = 0;
     this->speed_y = 0.02;
@@ -147,11 +149,11 @@ void Ball::tick() {
 
 void Ball::right(){
     //this->position.x += speed;
-    this->rotation -= speed*0.6;
+    this->rotation -= speed*0.4;
 }
 
 void Ball::left(){
-    this->rotation += speed*0.6;
+    this->rotation += speed*0.4;
 }
 
 void Ball::forward(float angle){
@@ -194,6 +196,13 @@ void Ball::shm(){
         angular_speed = -angular_speed;
     }
     this->level_angle += angular_speed;
+}
+
+bounding_box_t Ball::bounding_box() {
+    float x = this->position.x, y = this->position.y, z = this->position.z;
+    //float w = this->radius, h = this->radius;
+    bounding_box_t bbox = { x, y, z, 18, 10, 8 };
+    return bbox;
 }
 
 

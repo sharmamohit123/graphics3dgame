@@ -6,6 +6,9 @@
 #include "waves.h"
 #include "canon.h"
 #include "gifts.h"
+#include "rocks.h"
+#include "monster.h"
+#include "control.h"
 using namespace std;
 
 GLMatrices Matrices;
@@ -19,14 +22,20 @@ GLFWwindow *window;
 Ball boat;
 Water sea;
 Barrel barrel[100];
-Waves wave[100];
+Waves wave;
 Canon canon;
 Gifts gift[30];
+Rocks rock[100];
+Monster enemy[20];
+Monster boss;
+Monster explosion;
+Control control;
 
 float screen_zoom = 1, screen_center_x = 0, screen_center_y = 0;
 float camera_rotation_angle = 0, camera_x=0, camera_y=90, camera_z=100, target_x=0, target_y=90, target_z=0;
-int view = 1, i, ran_x, ran_z, n=100, m=50, g=20;
+int view = 1, i, ran_x, ran_z, n=100, m=50, g=20, r=100, e = 10, j, wind_time=0, fire = 0;
 const float pi = 3.14159;
+bool collide = 0, explode = 0, boat_move=0;
 
 Timer t60(1.0 / 60);
 
@@ -65,17 +74,26 @@ void draw() {
     // Scene render
     sea.draw(VP);
     boat.draw(VP);
-    for(i=0;i<n;i++)
-        wave[i].draw(VP);
+    control.draw(VP);
+    for(i=0;i<e;i++)
+        enemy[i].draw(VP);
+    if(boat_move)
+        wave.draw(VP);
     for(i=0;i<m;i++)
         barrel[i].draw(VP);
+    for(i=0;i<r;i++)
+        rock[i].draw(VP);
     for(i=0;i<g;i++)
         gift[i].draw(VP);
     if(canon.release)
         canon.draw(VP);
+    if(boat.points>1000)
+        boss.draw(VP);
+    explosion.draw(VP);
 }
 
 void tick_input(GLFWwindow *window) {
+    boat_move = 0;
     int left  = glfwGetKey(window, GLFW_KEY_LEFT);
     int right = glfwGetKey(window, GLFW_KEY_RIGHT);
     int up = glfwGetKey(window, GLFW_KEY_UP);
@@ -83,29 +101,31 @@ void tick_input(GLFWwindow *window) {
     int jump = glfwGetKey(window, GLFW_KEY_SPACE);
     int fire = glfwGetKey(window, GLFW_KEY_F);
     if (left) {
-        boat.left();
-        //speed_camera(2);
+        check_collision(3);
+        control.yrotation += boat.speed*0.4;
     }
     if(right){
-        boat.right();
-        //speed_camera(3);
+        check_collision(4);
+        control.yrotation -= boat.speed*0.4;
     }
     if(up){
-        boat.forward((boat.rotation-90)*(pi/180));
-        //speed_camera(1);
+        //boat.forward((boat.rotation-90)*(pi/180));
+        check_collision(1);
+        if(boat.position.y<=61)
+            boat_move = 1;
     }
     if(down){
-        boat.backward((boat.rotation-90)*(pi/180));
+        //boat.backward((boat.rotation-90)*(pi/180));
+        check_collision(2);
+        if(boat.position.y<=61)
+            boat_move = 1;
     }
     if(jump){
-        if(boat.position.y<=62)
+        if(boat.position.y<=61)
             boat.jump();
     }
-    if(fire && !canon.release){
-        //audio_init("assets/song1.mp3");
-        //audio_play();
-        canon.release = 1;
-        canon.fire((boat.rotation-90)*(pi/180));
+    if(fire){
+        canon_fire();
     }
 }
 
@@ -114,13 +134,45 @@ void tick_elements() {
     for(i=0;i<g;i++)
         gift[i].tick();
     boat.shm();
-    printf("%.2f\n",boat.position.y);
+    for(i=0;i<g;i++)
+        enemy[i].tick();
+    boss.tick();
+    //printf("%.2f\n",boat.position.y);
+    wave.set_position(boat.position.x, boat.position.y, boat.position.z);
+    wave.rotation = boat.rotation-90;
+    control.set_position(boat.position.x, boat.position.y, boat.position.z);
     if(!canon.release){
        canon.set_position(boat.position.x, boat.position.y, boat.position.z);
     }
     else{
         canon.tick();
     }
+
+    for(i=0;i<g;i++){
+        if (detect_collision(boat.bounding_box(), gift[i].bounding_box())) {
+            //printf("collide\n");
+            boat.points+=10;
+            barrel[gift[i].nbarrel].ngift = -1;
+            for(j=0;j<m;j++){
+                if(barrel[j].ngift==-1){
+                    gift[i].set_position(barrel[j].position.x, barrel[j].position.y, barrel[j].position.z);
+                    barrel[j].ngift = i;
+                    gift[i].nbarrel = j;
+                    break;
+                }
+            }
+        }
+    }
+    if(wind_time>500 && wind_time<800){
+        boat.rotation+=0.2;
+        control.yrotation+=0.2;
+    }
+    if(collide){
+        boat.health -=0.1;
+        printf("health=%f\n",boat.health);
+    }
+    if(boat.health<=0)
+        quit(window);
 }
 
 /* Initialize the OpenGL rendering properties */
@@ -132,12 +184,14 @@ void initGL(GLFWwindow *window, int width, int height) {
     boat = Ball(0, 60, 40, COLOR_RED);
     sea  =  Water(0, 40, 0, COLOR_BLUE);
     boat.rotation = 90;
-    printf("max=%d\n", INT_MAX);
-    for(i=0;i<n;i++){
-        ran_x = rand() % 2000-1000;
-        ran_z = rand() % 3000-4000;
-        wave[i] = Waves(ran_x, 60 , ran_z, COLOR_WAVE);
-    }
+    control = Control(0, 60, 40, COLOR_BALL5);
+    explosion = Monster(0, 60, 0, 2, COLOR_DARK_RED);
+    explosion.size = 0;
+    //for(i=0;i<n;i++){
+        //ran_x = rand() % 2000-1000;
+        //ran_z = rand() % 3000-4000;
+        wave = Waves(0, 60 ,45, COLOR_WAVE);
+    //}
     for(i=0;i<m;i++){
         ran_x = rand() % 10000-5000;
         if(ran_x>-500 && ran_x<0)
@@ -151,14 +205,42 @@ void initGL(GLFWwindow *window, int width, int height) {
             ran_x+=500;
         barrel[i] = Barrel(ran_x, 60 , ran_z, 6, COLOR_BROWN);
     }
+    for(i=0;i<r;i++){
+        ran_x = rand() % 10000-5000;
+        if(ran_x>-100 && ran_x<0)
+            ran_x-=100;
+        if(ran_x<100 && ran_x>0)
+            ran_x+=100;
+        ran_z = rand() % 10000-5000;
+        if(ran_z>-160 && ran_z<60)
+            ran_z-=100;
+        if(ran_x<160 && ran_x>60)
+            ran_x+=100;
+        rock[i] = Rocks(ran_x, 60 , ran_z, COLOR_GREY);
+    }
     canon = Canon(0, 62, 40, COLOR_DARK_BLUE);
 
     for(i=0;i<g;i++){
         int g_barrel = rand()%m;
         while(barrel[g_barrel].ngift!=-1)
             g_barrel = rand()%m;
-        gift[i] = Gifts(barrel[g_barrel].position.x+20, barrel[g_barrel].position.y+40, barrel[g_barrel].position.z, COLOR_BALL5);
+        gift[i] = Gifts(barrel[g_barrel].position.x+20, barrel[g_barrel].position.y+30, barrel[g_barrel].position.z, COLOR_BALL5);
+        gift[i].nbarrel = g_barrel;
     }
+    for(i=0;i<e;i++){
+        ran_x = rand() % 5000-2500;
+        if(ran_x>-100 && ran_x<0)
+            ran_x-=100;
+        if(ran_x<100 && ran_x>0)
+            ran_x+=100;
+        ran_z = rand() % 5000-2500;
+        if(ran_z>-160 && ran_z<60)
+            ran_z-=100;
+        if(ran_x<160 && ran_x>60)
+            ran_x+=100;
+        enemy[i] = Monster(ran_x, 80+16, ran_z, 2, COLOR_BALL3);
+    }
+    boss = Monster(boat.position.x, 68, boat.position.z+500, 2, COLOR_BALL4);
     // Create and compile our GLSL program from the shaders
     programID = LoadShaders("Sample_GL.vert", "Sample_GL.frag");
     // Get a handle for our "MVP" uniform
@@ -206,6 +288,8 @@ int main(int argc, char **argv) {
             tick_elements();
             tick_input(window);
             speed_camera();
+            wind_time+=1;
+            show_explosion();
         }
 
         // Poll for Keyboard and mouse events
@@ -230,26 +314,138 @@ void reset_screen() {
     Matrices.projection = glm::perspective(45.0f, 1.0f, 50.0f, 10000.0f);
 }
 
-void change_camera(){
-    /*float theta = (boat.rotation-90)*(pi/180);
-    if(type==0){
-        view = 0;
-        camera_x = 0;
-        camera_y = 75;
-        camera_z = 20;
-        target_x = 0;
-        target_y = 75;
-        target_z = 0;
+void canon_fire(){
+    if(!canon.release && !explode){
+        //audio_init("assets/song1.mp3");
+        //audio_play();
+        canon.release = 1;
+        canon.fire(control.yrotation+180, -1*control.xrotation);
     }
-    else if(type==1){
-        view = 1;
-        camera_x = boat.position.x+80*sin(theta);
-        camera_y = 90;
-        camera_z = boat.position.z+80*cos(theta);
-        target_x = 0;
-        target_y = 90;
-        target_z = 0;
-    }*/
+}
+
+void check_collision(int move){
+    float angle = (boat.rotation-90)*pi/180;
+    if(move==1){
+        boat.position.z -= boat.speed*cos(angle);
+        boat.position.x -= boat.speed*sin(angle);
+        if(collide==0){
+            for(i=0;i<r;i++){
+                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                    collide = 1;
+                    break;
+                }
+            }
+        }
+        else{
+            for(i=0;i<r;i++){
+                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                    boat.position.z += boat.speed*cos(angle);
+                    boat.position.x += boat.speed*sin(angle);
+                    collide = 1;
+                    break;
+                }
+                else{
+                    collide = 0;
+                }
+            }
+        }
+    }
+    if(move==2){
+        boat.position.z += boat.speed*cos(angle);
+        boat.position.x += boat.speed*sin(angle);
+        if(collide==0){
+            for(i=0;i<r;i++){
+                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                    collide = 1;
+                    break;
+                }
+            }
+        }
+        else{
+            for(i=0;i<r;i++){
+                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                    boat.position.z -= boat.speed*cos(angle);
+                    boat.position.x -= boat.speed*sin(angle);
+                    collide = 1;
+                    break;
+                }
+                else{
+                    collide = 0;
+                }
+            }
+        }
+    }
+    if(move==3){
+        boat.rotation += boat.speed*0.4;
+        if(collide==0){
+            for(i=0;i<r;i++){
+                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                    collide = 1;
+                    break;
+                }
+            }
+        }
+        else{
+            for(i=0;i<r;i++){
+                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                    boat.rotation -= boat.speed*0.4;
+                    collide = 1;
+                    break;
+                }
+                else{
+                    collide = 0;
+                }
+            }
+        }
+    }
+    if(move==4){
+        boat.rotation -= boat.speed*0.4;
+        if(collide==0){
+            for(i=0;i<r;i++){
+                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                    collide = 1;
+                    break;
+                }
+            }
+        }
+        else{
+            for(i=0;i<r;i++){
+                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                    boat.rotation += boat.speed*0.4;
+                    collide = 1;
+                    break;
+                }
+                else{
+                    collide = 0;
+                }
+            }
+        }
+    }
+}
+
+void show_explosion(){
+    for(i=0;i<r;i++){
+        if (detect_collision(canon.bounding_box(), rock[i].bounding_box()) && canon.release) {
+            explosion.set_position(canon.position.x, 60, canon.position.z);
+            explosion.size = 2;
+            explode = 1;
+            rock[i].position -= 500;
+        }
+    }
+    if(canon.position.y < 60 && explode == 0){
+        explosion.set_position(canon.position.x, 60, canon.position.z);
+        explosion.size = 2;
+        explode = 1;
+    }
+    if(explosion.size>0){
+        explosion.size-=0.03;
+    }
+    if(explosion.size<=0){
+        explode = 0;
+    }
+}
+
+void change_camera(){
     view = (view+1)%5;
 }
 
@@ -265,15 +461,15 @@ void speed_camera(){
         target_z = boat.position.z+cos(theta+pi);
     }
     else if(view==0){
-        camera_x = boat.position.x+30*sin(theta);
+        camera_x = boat.position.x+35*sin(theta);
         camera_y = boat.position.y+10;
-        camera_z = boat.position.z+30*cos(theta);
+        camera_z = boat.position.z+35*cos(theta);
 
         target_x = boat.position.x+40*sin(theta+pi);
         target_y = boat.position.y+10;
         target_z = boat.position.z+40*cos(theta+pi);
-        printf("cx=%f cy=%f cz=%f\n", camera_x, camera_y, camera_z);
-        printf("tx=%f ty=%f tz=%f\n", target_x, target_y, target_z);
+        //printf("cx=%f cy=%f cz=%f\n", camera_x, camera_y, camera_z);
+        //printf("tx=%f ty=%f tz=%f\n", target_x, target_y, target_z);
     }
     else if(view==3){
         camera_x = boat.position.x;
@@ -283,8 +479,8 @@ void speed_camera(){
         target_x = boat.position.x+1;
         target_y = boat.position.y;
         target_z = boat.position.z;
-        printf("cx=%f cy=%f cz=%f\n", camera_x, camera_y, camera_z);
-        printf("tx=%f ty=%f tz=%f\n", target_x, target_y, target_z);
+        //printf("cx=%f cy=%f cz=%f\n", camera_x, camera_y, camera_z);
+        //printf("tx=%f ty=%f tz=%f\n", target_x, target_y, target_z);
     }
     else if(view==4){
         camera_x = boat.position.x+100;
@@ -308,6 +504,16 @@ void heli_camera(float x, float y){
             target_y = boat.position.y+(300-y)/2;
         }
     }
+}
+
+void aim_canon(float x, float y) {
+    if (view != 2) {
+        control.yrotation = (boat.rotation-90)-((3*x/5) - 180)+180;
+        printf("%f   %f\n",x,y);
+        //control.zrotation = -((3*x/5) - 180);
+       control.xrotation = (3*y/20) - 90;
+    }
+    printf("yrot=%f xrot=%f\n", control.yrotation, control.xrotation);
 }
 
 void zoom_camera(int type){

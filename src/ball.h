@@ -15,6 +15,8 @@ public:
     float angular_speed;
     float acceleration_y;
     float speed_y;
+    float health;
+    int points;
     void shm();
     void left();
     void forward(float angle);
@@ -26,6 +28,7 @@ public:
     float speed;
     float speedy;
     float gravity;
+    bounding_box_t bounding_box();
 private:
     VAO *object;
     VAO *object1;
