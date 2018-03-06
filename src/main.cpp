@@ -9,6 +9,10 @@
 #include "rocks.h"
 #include "monster.h"
 #include "control.h"
+#include "drop.h"
+#include "blast.h"
+#include "stdlib.h"
+#include "string.h"
 using namespace std;
 
 GLMatrices Matrices;
@@ -28,14 +32,15 @@ Gifts gift[30];
 Rocks rock[100];
 Monster enemy[20];
 Monster boss;
-Monster explosion;
+Blast explosion;
 Control control;
+Drop drop;
 
 float screen_zoom = 1, screen_center_x = 0, screen_center_y = 0;
 float camera_rotation_angle = 0, camera_x=0, camera_y=90, camera_z=100, target_x=0, target_y=90, target_z=0;
-int view = 1, i, ran_x, ran_z, n=100, m=50, g=20, r=100, e = 10, j, wind_time=0, fire = 0;
+int view = 1, i, ran_x, ran_z, n=100, m=50, g=30, r=100, e = 15, j, wind_time=0, fire = 0, kills = 0, drop_time=0;
 const float pi = 3.14159;
-bool collide = 0, explode = 0, boat_move=0;
+bool collide = 0, explode = 0, boat_move=0, boss_kill = 0, show_drop = 0, booster=0;
 
 Timer t60(1.0 / 60);
 
@@ -87,26 +92,42 @@ void draw() {
         gift[i].draw(VP);
     if(canon.release)
         canon.draw(VP);
-    if(boat.points>1000)
+    if(kills>=2){
         boss.draw(VP);
+        //kills = 0;
+        if(boss_kill){
+            boss.set_position(boat.position.x+250, 84, boat.position.z-250);
+            boss_kill = 0;
+            boss.health = 150;
+        }
+    }
     explosion.draw(VP);
+    if(boss_kill){
+        drop.draw(VP);
+        if(!show_drop){
+            drop.set_position(boat.position.x+500, 60, boat.position.z+500);
+            show_drop = 1;
+        }
+    }
 }
 
 void tick_input(GLFWwindow *window) {
     boat_move = 0;
-    int left  = glfwGetKey(window, GLFW_KEY_LEFT);
-    int right = glfwGetKey(window, GLFW_KEY_RIGHT);
-    int up = glfwGetKey(window, GLFW_KEY_UP);
-    int down = glfwGetKey(window, GLFW_KEY_DOWN);
+    int left  = glfwGetKey(window, GLFW_KEY_A);
+    int right = glfwGetKey(window, GLFW_KEY_D);
+    int up = glfwGetKey(window, GLFW_KEY_W);
+    int down = glfwGetKey(window, GLFW_KEY_S);
     int jump = glfwGetKey(window, GLFW_KEY_SPACE);
     int fire = glfwGetKey(window, GLFW_KEY_F);
     if (left) {
-        check_collision(3);
-        control.yrotation += boat.speed*0.4;
+        //check_collision(3);
+        boat.left();
+        control.yrotation += boat.speed*0.3;
     }
     if(right){
-        check_collision(4);
-        control.yrotation -= boat.speed*0.4;
+        //check_collision(4);
+        boat.right();
+        control.yrotation -= boat.speed*0.3;
     }
     if(up){
         //boat.forward((boat.rotation-90)*(pi/180));
@@ -166,13 +187,25 @@ void tick_elements() {
     if(wind_time>500 && wind_time<800){
         boat.rotation+=0.2;
         control.yrotation+=0.2;
+        wind_time = 0;
     }
     if(collide){
         boat.health -=0.1;
-        printf("health=%f\n",boat.health);
+        //printf("health=%f\n",boat.health);
     }
     if(boat.health<=0)
         quit(window);
+    if(detect_collision(boat.bounding_box(), drop.bounding_box()) && show_drop){
+        boat.speed += 10;
+        show_drop = 0;
+        boss_kill = 0;
+        booster = 1;
+    }
+    if(drop_time>=1000 && booster){
+        boat.speed-=10;
+        drop_time = 0;
+        booster = 0;
+    }
 }
 
 /* Initialize the OpenGL rendering properties */
@@ -185,7 +218,8 @@ void initGL(GLFWwindow *window, int width, int height) {
     sea  =  Water(0, 40, 0, COLOR_BLUE);
     boat.rotation = 90;
     control = Control(0, 60, 40, COLOR_BALL5);
-    explosion = Monster(0, 60, 0, 2, COLOR_DARK_RED);
+    explosion = Blast(0, 60, 0, 2, COLOR_DARK_RED);
+    drop = Drop(0, 60, 0, COLOR_BALL3);
     explosion.size = 0;
     //for(i=0;i<n;i++){
         //ran_x = rand() % 2000-1000;
@@ -224,7 +258,7 @@ void initGL(GLFWwindow *window, int width, int height) {
         int g_barrel = rand()%m;
         while(barrel[g_barrel].ngift!=-1)
             g_barrel = rand()%m;
-        gift[i] = Gifts(barrel[g_barrel].position.x+20, barrel[g_barrel].position.y+30, barrel[g_barrel].position.z, COLOR_BALL5);
+        gift[i] = Gifts(barrel[g_barrel].position.x+20, barrel[g_barrel].position.y+30, barrel[g_barrel].position.z, COLOR_BALL4);
         gift[i].nbarrel = g_barrel;
     }
     for(i=0;i<e;i++){
@@ -238,9 +272,11 @@ void initGL(GLFWwindow *window, int width, int height) {
             ran_z-=100;
         if(ran_x<160 && ran_x>60)
             ran_x+=100;
-        enemy[i] = Monster(ran_x, 80+16, ran_z, 2, COLOR_BALL3);
+        enemy[i] = Monster(ran_x, 76, ran_z, 2, COLOR_BALL3);
     }
-    boss = Monster(boat.position.x, 68, boat.position.z+500, 2, COLOR_BALL4);
+    boss = Monster(boat.position.x+250, 84, boat.position.z-250, 3, COLOR_BALL6);
+    boss.kill_score = 500;
+    boss.health = 150;
     // Create and compile our GLSL program from the shaders
     programID = LoadShaders("Sample_GL.vert", "Sample_GL.frag");
     // Get a handle for our "MVP" uniform
@@ -281,15 +317,34 @@ int main(int argc, char **argv) {
         if (t60.processTick()) {
             // 60 fps
             // OpenGL Draw commands
-            draw();
+
             // Swap Frame Buffer in double buffering
             glfwSwapBuffers(window);
 
+            char score[50];
+            sprintf(score,"%d",boat.points);
+            char str1[200]= "Points: ";
+            strcat(str1,score);
+
+            char lives[50];
+            sprintf(lives,"%d",(int)boat.health);
+            strcat(str1,"   Health: ");
+            strcat(str1, lives);
+
+
+            glfwSetWindowTitle(window,str1);
+
             tick_elements();
+            draw();
             tick_input(window);
             speed_camera();
             wind_time+=1;
+            if(booster)
+                drop_time+=1;
             show_explosion();
+            if_collision();
+            if(!collide)
+                move_enemy();
         }
 
         // Poll for Keyboard and mouse events
@@ -323,104 +378,170 @@ void canon_fire(){
     }
 }
 
+void move_enemy(){
+    float bx, bz, ex, ez;
+    bx = boat.position.x;
+    bz = boat.position.z;
+    for(i=0;i<e+1;i++){
+        if(i<e){
+            ex = enemy[i].position.x;
+            ez = enemy[i].position.z;
+        }
+        else{
+            ex = boss.position.x;
+            ez = boss.position.z;
+        }
+        if(abs(bx-ex)<500 && abs(bz-ez)<500){
+            if(ez>bz)
+                 ez-=1;
+            else
+                ez+=1;
+            if(ex>bx)
+                ex-=1;
+            else
+                ex+=1;
+        }
+        if(i<e)
+            enemy[i].set_position(ex, enemy[i].position.y, ez);
+        else if(i==e && !boss_kill && kills>=2)
+            boss.set_position(ex, boss.position.y, ez);
+    }
+}
+
+void if_collision(){
+    for(i=0;i<r+e+1;i++){
+        if(i<r){
+            if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                //printf("rock");
+                collide = 1;
+                break;
+            }
+        }
+        else if(i>=r && i<r+e){
+            if(detect_collision(boat.bounding_box(), enemy[i-r].bounding_box())){
+                //printf("enemy");
+                collide = 1;
+                break;
+            }
+        }
+        else{
+            if(detect_collision(boat.bounding_box(), boss.bounding_box())){
+                collide = 1;
+                break;
+            }
+        }
+    }
+}
+
 void check_collision(int move){
     float angle = (boat.rotation-90)*pi/180;
+    int t,k;
     if(move==1){
-        boat.position.z -= boat.speed*cos(angle);
-        boat.position.x -= boat.speed*sin(angle);
-        if(collide==0){
-            for(i=0;i<r;i++){
-                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
-                    collide = 1;
-                    break;
+            boat.position.z -= boat.speed*cos(angle);
+            boat.position.x -= boat.speed*sin(angle);
+            if(collide==0){
+                for(i=0;i<r+e+1;i++){
+                    if(i<r){
+                        if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                    else if(i>=r && i<r+e){
+                        if(detect_collision(boat.bounding_box(), enemy[i-r].bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                    else{
+                        if(detect_collision(boat.bounding_box(), boss.bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
                 }
             }
-        }
-        else{
-            for(i=0;i<r;i++){
-                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+            else{
+                collide = 0;
+                for(i=0;i<r+e+1;i++){
+                    if(i<r){
+                        if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                    else if(i>=r && i<r+e){
+                        if(detect_collision(boat.bounding_box(), enemy[i-r].bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                    else{
+                        if(detect_collision(boat.bounding_box(), boss.bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                }
+                if(collide){
                     boat.position.z += boat.speed*cos(angle);
                     boat.position.x += boat.speed*sin(angle);
-                    collide = 1;
-                    break;
-                }
-                else{
-                    collide = 0;
                 }
             }
         }
-    }
     if(move==2){
-        boat.position.z += boat.speed*cos(angle);
-        boat.position.x += boat.speed*sin(angle);
-        if(collide==0){
-            for(i=0;i<r;i++){
-                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
-                    collide = 1;
-                    break;
+            boat.position.z += boat.speed*cos(angle);
+            boat.position.x += boat.speed*sin(angle);
+            if(collide==0){
+                for(i=0;i<r+e+1;i++){
+                    if(i<r){
+                        if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                    else if(i>=r && i<r+e){
+                        if(detect_collision(boat.bounding_box(), enemy[i-r].bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                    else{
+                        if(detect_collision(boat.bounding_box(), boss.bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
                 }
             }
-        }
-        else{
-            for(i=0;i<r;i++){
-                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+            else{
+                collide = 0;
+                for(i=0;i<r+e+1;i++){
+                    if(i<r){
+                        if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                    else if(i>=r && i<r+e){
+                        if(detect_collision(boat.bounding_box(), enemy[i-r].bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                    else{
+                        if(detect_collision(boat.bounding_box(), boss.bounding_box())){
+                            collide = 1;
+                            break;
+                        }
+                    }
+                }
+                if(collide){
                     boat.position.z -= boat.speed*cos(angle);
                     boat.position.x -= boat.speed*sin(angle);
-                    collide = 1;
-                    break;
-                }
-                else{
-                    collide = 0;
                 }
             }
         }
-    }
-    if(move==3){
-        boat.rotation += boat.speed*0.4;
-        if(collide==0){
-            for(i=0;i<r;i++){
-                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
-                    collide = 1;
-                    break;
-                }
-            }
-        }
-        else{
-            for(i=0;i<r;i++){
-                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
-                    boat.rotation -= boat.speed*0.4;
-                    collide = 1;
-                    break;
-                }
-                else{
-                    collide = 0;
-                }
-            }
-        }
-    }
-    if(move==4){
-        boat.rotation -= boat.speed*0.4;
-        if(collide==0){
-            for(i=0;i<r;i++){
-                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
-                    collide = 1;
-                    break;
-                }
-            }
-        }
-        else{
-            for(i=0;i<r;i++){
-                if(detect_collision(boat.bounding_box(), rock[i].bounding_box())){
-                    boat.rotation += boat.speed*0.4;
-                    collide = 1;
-                    break;
-                }
-                else{
-                    collide = 0;
-                }
-            }
-        }
-    }
 }
 
 void show_explosion(){
@@ -430,6 +551,29 @@ void show_explosion(){
             explosion.size = 2;
             explode = 1;
             rock[i].position -= 500;
+        }
+    }
+    if (detect_collision(canon.bounding_box(), boss.bounding_box()) && canon.release) {
+        explosion.set_position(canon.position.x, 60, canon.position.z);
+        explosion.size = 2;
+        explode = 1;
+        boat.points+=boss.kill_score;
+        boss.health-=10;
+        //printf("bhealth=%d\n", boss.health);
+        if(boss.health<=0){
+            boss_kill = 1;
+            boss.position -= 500;
+            kills = 0;
+        }
+    }
+    for(i=0;i<e;i++){
+        if (detect_collision(canon.bounding_box(), enemy[i].bounding_box()) && canon.release) {
+            explosion.set_position(canon.position.x, 60, canon.position.z);
+            explosion.size = 2;
+            explode = 1;
+            enemy[i].position -= 500;
+            boat.points += enemy[i].kill_score;
+            kills+=1;
         }
     }
     if(canon.position.y < 60 && explode == 0){
@@ -509,11 +653,11 @@ void heli_camera(float x, float y){
 void aim_canon(float x, float y) {
     if (view != 2) {
         control.yrotation = (boat.rotation-90)-((3*x/5) - 180)+180;
-        printf("%f   %f\n",x,y);
+        //printf("%f   %f\n",x,y);
         //control.zrotation = -((3*x/5) - 180);
        control.xrotation = (3*y/20) - 90;
     }
-    printf("yrot=%f xrot=%f\n", control.yrotation, control.xrotation);
+    //printf("yrot=%f xrot=%f\n", control.yrotation, control.xrotation);
 }
 
 void zoom_camera(int type){

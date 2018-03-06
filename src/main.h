@@ -83,6 +83,8 @@ void zoom_camera(int type);
 void show_explosion();
 void canon_fire();
 void check_collision(int move);
+void move_enemy();
+void if_collision();
 
 extern float screen_zoom, screen_center_x, screen_center_y;
 void reset_screen();
@@ -115,5 +117,6 @@ extern const color_t COLOR_GREY;
 extern const color_t COLOR_DARK_RED;
 extern const color_t COLOR_WHITE;
 extern const color_t COLOR_BOTTOM;
+extern const color_t COLOR_PURPLE;
 
 #endif
