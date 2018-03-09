@@ -85,6 +85,7 @@ void canon_fire();
 void check_collision(int move);
 void move_enemy();
 void if_collision();
+void change_ortho();
 
 extern float screen_zoom, screen_center_x, screen_center_y;
 void reset_screen();

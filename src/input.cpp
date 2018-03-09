@@ -62,6 +62,10 @@ void keyboardChar(GLFWwindow *window, unsigned int key) {
         change_camera();
         //mode++;
         break;
+     case 'V':
+     case 'v':
+         change_ortho();
+         break;
     default:
         break;
     }

@@ -29,7 +29,7 @@ Barrel barrel[100];
 Waves wave;
 Canon canon;
 Gifts gift[30];
-Rocks rock[100];
+Rocks rock[500];
 Monster enemy[20];
 Monster boss;
 Blast explosion;
@@ -38,9 +38,9 @@ Drop drop;
 
 float screen_zoom = 1, screen_center_x = 0, screen_center_y = 0;
 float camera_rotation_angle = 0, camera_x=0, camera_y=90, camera_z=100, target_x=0, target_y=90, target_z=0;
-int view = 1, i, ran_x, ran_z, n=100, m=50, g=30, r=100, e = 15, j, wind_time=0, fire = 0, kills = 0, drop_time=0;
+int view = 1, i, ran_x, ran_z, n=100, m=50, g=30, r=500, e = 15, j, wind_time=0, fire = 0, kills = 0, drop_time=0, wind_dir=1;
 const float pi = 3.14159;
-bool collide = 0, explode = 0, boat_move=0, boss_kill = 0, show_drop = 0, booster=0;
+bool collide = 0, explode = 0, boat_move=0, boss_kill = 0, show_drop = 0, booster=0, ortho=0;
 
 Timer t60(1.0 / 60);
 
@@ -173,21 +173,33 @@ void tick_elements() {
         if (detect_collision(boat.bounding_box(), gift[i].bounding_box())) {
             //printf("collide\n");
             boat.points+=10;
-            barrel[gift[i].nbarrel].ngift = -1;
             for(j=0;j<m;j++){
                 if(barrel[j].ngift==-1){
-                    gift[i].set_position(barrel[j].position.x, barrel[j].position.y, barrel[j].position.z);
+                    gift[i].set_position(barrel[j].position.x+20, barrel[j].position.y+30, barrel[j].position.z);
                     barrel[j].ngift = i;
                     gift[i].nbarrel = j;
                     break;
                 }
             }
+            barrel[gift[i].nbarrel].ngift = -1;
         }
     }
-    if(wind_time>500 && wind_time<800){
-        boat.rotation+=0.2;
-        control.yrotation+=0.2;
-        wind_time = 0;
+    if(wind_time>500 && wind_time<=800){
+        if(wind_dir==1){
+            boat.rotation+=0.2;
+            control.yrotation+=0.2;
+        }
+        else{
+            boat.rotation-=0.2;
+            control.yrotation-=0.2;
+        }
+        if(wind_time==800){
+            wind_time = 0;
+            if(wind_dir==1)
+                wind_dir=2;
+             else
+                wind_dir=1;
+        }
     }
     if(collide){
         boat.health -=0.1;
@@ -241,15 +253,15 @@ void initGL(GLFWwindow *window, int width, int height) {
     }
     for(i=0;i<r;i++){
         ran_x = rand() % 10000-5000;
-        if(ran_x>-100 && ran_x<0)
-            ran_x-=100;
-        if(ran_x<100 && ran_x>0)
-            ran_x+=100;
+        if(ran_x>-50 && ran_x<0)
+            ran_x-=50;
+        if(ran_x<50 && ran_x>0)
+            ran_x+=50;
         ran_z = rand() % 10000-5000;
-        if(ran_z>-160 && ran_z<60)
-            ran_z-=100;
-        if(ran_x<160 && ran_x>60)
-            ran_x+=100;
+        if(ran_z>-150 && ran_z<60)
+            ran_z-=50;
+        if(ran_z<150 && ran_z>60)
+            ran_z+=50;
         rock[i] = Rocks(ran_x, 60 , ran_z, COLOR_GREY);
     }
     canon = Canon(0, 62, 40, COLOR_DARK_BLUE);
@@ -274,7 +286,7 @@ void initGL(GLFWwindow *window, int width, int height) {
             ran_x+=100;
         enemy[i] = Monster(ran_x, 76, ran_z, 2, COLOR_BALL3);
     }
-    boss = Monster(boat.position.x+250, 84, boat.position.z-250, 3, COLOR_BALL6);
+    boss = Monster(boat.position.x+250, 76, boat.position.z-250, 2,  COLOR_BALL6);
     boss.kill_score = 500;
     boss.health = 150;
     // Create and compile our GLSL program from the shaders
@@ -311,7 +323,7 @@ int main(int argc, char **argv) {
     //audio_init("assets/song.mp3");
     /* Draw in loop */
     while (!glfwWindowShouldClose(window)) {
-         //audio_play();
+            //audio_play();
         // Process timers
 
         if (t60.processTick()) {
@@ -345,6 +357,7 @@ int main(int argc, char **argv) {
             if_collision();
             if(!collide)
                 move_enemy();
+            reset_screen();
         }
 
         // Poll for Keyboard and mouse events
@@ -361,18 +374,27 @@ bool detect_collision(bounding_box_t a, bounding_box_t b) {
 }
 
 void reset_screen() {
-    /*float top    = screen_center_y + 50 / screen_zoom;
-    float bottom = screen_center_y - 50 / screen_zoom;
-    float left   = screen_center_x - 50 / screen_zoom;
-    float right  = screen_center_x + 50 / screen_zoom;
-    Matrices.projection = glm::ortho(left, right, bottom, top, 0.1f, 500.0f);*/
+    if(ortho){
+        float top = screen_center_y + 100 / screen_zoom;
+        float bottom = screen_center_y - 100 / screen_zoom;
+        float left   = screen_center_x - 100 / screen_zoom;
+        float right  = screen_center_x + 100 / screen_zoom;
+        Matrices.projection = glm::ortho(left, right, bottom, top, 0.1f, 500.0f);
+    }
+    else{
     Matrices.projection = glm::perspective(45.0f, 1.0f, 50.0f, 10000.0f);
+    }
+}
+
+void change_ortho(){
+    if(ortho)
+        ortho=0;
+    else
+        ortho=1;
 }
 
 void canon_fire(){
     if(!canon.release && !explode){
-        //audio_init("assets/song1.mp3");
-        //audio_play();
         canon.release = 1;
         canon.fire(control.yrotation+180, -1*control.xrotation);
     }
@@ -426,6 +448,7 @@ void if_collision(){
         }
         else{
             if(detect_collision(boat.bounding_box(), boss.bounding_box())){
+                printf("boss\n");
                 collide = 1;
                 break;
             }
@@ -557,13 +580,13 @@ void show_explosion(){
         explosion.set_position(canon.position.x, 60, canon.position.z);
         explosion.size = 2;
         explode = 1;
-        boat.points+=boss.kill_score;
         boss.health-=10;
         //printf("bhealth=%d\n", boss.health);
         if(boss.health<=0){
             boss_kill = 1;
             boss.position -= 500;
             kills = 0;
+            boat.points+=boss.kill_score;
         }
     }
     for(i=0;i<e;i++){

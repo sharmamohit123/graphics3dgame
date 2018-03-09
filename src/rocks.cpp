@@ -68,6 +68,6 @@ void Rocks::set_position(float x, float y, float z) {
 
 bounding_box_t Rocks::bounding_box() {
     float x = this->position.x, y = this->position.y, z = this->position.z;
-    bounding_box_t bbox = { x, y, z, 13, 5, 13 };
+    bounding_box_t bbox = { x, y, z, 10, 5, 10 };
     return bbox;
 }
